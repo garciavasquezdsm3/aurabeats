@@ -10,7 +10,7 @@
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev"
   },
-  "devDependencies": {
+  "dependencies": {
     "concurrently": "^8.2.2"
   },
   "keywords": ["youtube", "downloader", "music", "react", "node"],
