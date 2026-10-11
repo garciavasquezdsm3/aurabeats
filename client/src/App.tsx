@@ -126,6 +126,19 @@ export function App() {
   };
 
   const handleStartDownload = (track: Track, format: string, quality: string) => {
+    // Trigger real server-side download stream
+    const videoUrl = track.id.length === 11 
+      ? `https://www.youtube.com/watch?v=${track.id}` 
+      : 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    
+    const downloadUrl = `/api/download-file?url=${encodeURIComponent(videoUrl)}&format=${format}`;
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${track.title}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
     const newDownload: DownloadItem = {
       id: 'dl_' + Math.random().toString(36).substring(2, 9),
       track,

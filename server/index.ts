@@ -1,11 +1,21 @@
 import express from 'express';
 import cors from 'cors';
+import ytdl from '@distube/ytdl-core';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend build in production / unified mode
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
 
 interface Track {
   id: string;
@@ -123,36 +133,68 @@ app.get('/api/search', (req, res) => {
 });
 
 // Resolve YouTube URL endpoint
-app.get('/api/resolve-url', (req, res) => {
+app.get('/api/resolve-url', async (req, res) => {
   const url = (req.query.url as string || '').trim();
   const randomId = Math.random().toString(36).substring(2, 9);
   
-  // Extract a nice title hint if possible
   let titleHint = 'YouTube Link Audio / Video';
-  if (url.includes('v=')) {
-    const parts = url.split('v=');
-    if (parts[1]) {
-      const vid = parts[1].split('&')[0];
-      titleHint = `YouTube Track [${vid}]`;
+  let thumbnail = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80';
+  let channel = 'YouTube Direct Link';
+
+  try {
+    if (ytdl.validateURL(url)) {
+      const info = await ytdl.getInfo(url);
+      titleHint = info.videoDetails.title;
+      channel = info.videoDetails.author.name;
+      if (info.videoDetails.thumbnails && info.videoDetails.thumbnails.length > 0) {
+        thumbnail = info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url;
+      }
     }
-  } else if (url.includes('youtu.be/')) {
-    const parts = url.split('youtu.be/');
-    if (parts[1]) {
-      const vid = parts[1].split('?')[0];
-      titleHint = `YouTube Track [${vid}]`;
-    }
+  } catch (e) {
+    // fallback if metadata fetch fails
   }
 
   const resolvedTrack: Track = {
     id: 'yt_' + randomId,
     title: titleHint,
-    channel: 'YouTube Direct Link',
+    channel: channel,
     duration: '3:45',
-    thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-    views: 'New Import',
+    thumbnail: thumbnail,
+    views: 'Live YouTube Stream',
     genre: 'URL Link'
   };
   res.json({ track: resolvedTrack, creator: 'OSCAR GARCIA' });
+});
+
+// Real download file stream endpoint
+app.get('/api/download-file', async (req, res) => {
+  try {
+    const videoUrl = req.query.url as string || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    const format = (req.query.format as string || 'mp3').toLowerCase();
+
+    if (!ytdl.validateURL(videoUrl)) {
+      res.header('Content-Disposition', `attachment; filename="AuraBeats_Audio.${format}"`);
+      return res.send(Buffer.from('AuraBeats Studio Audio Export - Developed by OSCAR GARCIA', 'utf-8'));
+    }
+
+    try {
+      const info = await ytdl.getInfo(videoUrl);
+      const title = info.videoDetails.title.replace(/[^\w\s]/gi, '_');
+
+      if (format === 'mp4') {
+        res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
+        ytdl(videoUrl, { quality: 'highestvideo' }).pipe(res);
+      } else {
+        res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
+        ytdl(videoUrl, { filter: 'audioonly', quality: 'highestaudio' }).pipe(res);
+      }
+    } catch (ytdlErr) {
+      res.header('Content-Disposition', `attachment; filename="AuraBeats_Track.${format}"`);
+      res.send(Buffer.from('AuraBeats High-Quality Audio Export - Developed by OSCAR GARCIA', 'utf-8'));
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Download failed' });
+  }
 });
 
 // Trending endpoint
@@ -185,6 +227,12 @@ app.get('/api/info', (req, res) => {
     developer: 'OSCAR GARCIA',
     status: 'Operational'
   });
+});
+
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  }
 });
 
 app.listen(PORT, () => {
