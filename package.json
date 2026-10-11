@@ -1,0 +1,17 @@
+{
+  "name": "aurabeats-youtube-downloader",
+  "version": "1.0.0",
+  "description": "Vibrant YouTube Music Downloader Mobile App by OSCAR GARCIA",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build:client": "cd client && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["youtube", "downloader", "music", "react", "node"],
+  "author": "OSCAR GARCIA"
+}
