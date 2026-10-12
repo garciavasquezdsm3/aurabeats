@@ -27,7 +27,7 @@ jobs:
       run: npm install
 
     - name: Build Client App
-      run: cd client && npm install && npm run build
+      run: cd client && npm install && npx tsc && npx vite build
 
     - name: Build Server App
       run: cd server && npm install
